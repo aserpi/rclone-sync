@@ -17,6 +17,34 @@ __version__ = "0.0.1"
 PathLike = Union[pathlib.Path, str]
 
 
+def check_rclone_config(rclone_path: PathLike, rclone_config: Optional[PathLike] = None) -> None:
+    """Checks for the existence of rclone's config file."""
+    args = [rclone_path, "config", "file"]
+    if rclone_config is not None:
+        args.append("--config")
+        args.append(rclone_config)
+
+    try:
+        config_file_response = subprocess.run(args, capture_output=True, check=False, text=True)
+    except FileNotFoundError:
+        print(f"Can not find rclone executable file '{rclone_path}'")
+        sys.exit(3)
+
+    if config_file_response.returncode:
+        print("Can not find rclone configuration file")
+        sys.exit(4)
+
+    config_file = pathlib.Path(config_file_response.stdout.split("\n", 1)[1].strip())
+    try:
+        if not config_file.is_file():
+            print(f"rclone configuration file '{config_file}' does not exist")
+            sys.exit(4)
+    except OSError as e:
+        print(f"Can not use rclone configuration file '{rclone_config}': "
+              f"got '{e.strerror}' on '{e.filename}'")
+        sys.exit(4)
+
+
 def delete_lock_file(lock_file: pathlib.Path) -> None:
     """Deletes the lock file."""
     lock_file.unlink()
@@ -40,15 +68,23 @@ def get_paths_id(path_1: str, path_2: str) -> str:
     return paths_hash.hexdigest()
 
 
-def list_remotes() -> Set[str]:
+def list_remotes(rclone_path: PathLike = "rclone",
+                 rclone_config: Optional[PathLike] = None) -> Set[str]:
     """Lists the remotes configured in rclone."""
-    return set(re.findall(r"(\S+):",
-                          subprocess.run(["rclone", "listremotes"], capture_output=True,
-                                         check=False, text=True).stdout))  # yapf: disable
+    args = [rclone_path, "listremotes"]
+    if rclone_config is not None:
+        args.append("--config")
+        args.append(rclone_config)
 
+    return set(
+        re.findall(r"(\S+):",
+                   subprocess.run(args, capture_output=True, check=False, text=True).stdout))
 
 # TODO (aserpi): add Windows support
-def resolve_path(path: PathLike, remotes: Union[List[str], Set[str]]) -> Optional[PathLike]:
+def resolve_path(path: PathLike,
+                 remotes: Union[List[str], Set[str]],
+                 rclone_path: PathLike = "rclone",
+                 rclone_config: Optional[PathLike] = None) -> Optional[PathLike]:
     """Resolves the path.
 
     Returns:
@@ -68,10 +104,11 @@ def resolve_path(path: PathLike, remotes: Union[List[str], Set[str]]) -> Optiona
             if "/" in path_split[0]:
                 path = pathlib.Path(path)
             elif path_split[0] in remotes:  # remote path
-                ret = subprocess.run(["rclone", "mkdir", path],
-                                     capture_output=True,
-                                     check=False,
-                                     text=True)
+                args = [rclone_path, "mkdir", path]
+                if rclone_config:
+                    args.append("--config")
+                    args.append(rclone_config)
+                ret = subprocess.run(args, capture_output=True, check=False, text=True)
                 if ret.returncode:
                     print(ret.stderr)
                     return None
@@ -93,17 +130,26 @@ def resolve_path(path: PathLike, remotes: Union[List[str], Set[str]]) -> Optiona
     raise TypeError("Path must be 'str' or 'pathlib.Path'")
 
 
-def resolve_paths(path_1: PathLike,
-                  path_2: PathLike) -> Tuple[Optional[PathLike], Optional[PathLike]]:
+def resolve_paths(
+        path_1: PathLike,
+        path_2: PathLike,
+        rclone_path: PathLike = "rclone",
+        rclone_config: Optional[PathLike] = None) -> Tuple[Optional[PathLike], Optional[PathLike]]:
     """Resolves the two paths.
 
     Returns:
         See resolve_path. In addition, it returns (None, None) if the
         paths are identical.
     """
-    remotes = list_remotes()
-    absolute_path_1 = resolve_path(path_1, remotes)
-    absolute_path_2 = resolve_path(path_2, remotes)
+    remotes = list_remotes(rclone_path=rclone_path, rclone_config=rclone_config)
+    absolute_path_1 = resolve_path(path_1,
+                                   remotes,
+                                   rclone_path=rclone_path,
+                                   rclone_config=rclone_config)
+    absolute_path_2 = resolve_path(path_2,
+                                   remotes,
+                                   rclone_path=rclone_path,
+                                   rclone_config=rclone_config)
 
     if absolute_path_1 is not None and absolute_path_1 == absolute_path_2:
         print("The two paths are identical!")
@@ -121,11 +167,20 @@ def main() -> None:
     parser.add_argument("path_2", help="second path")
 
     # Optional arguments
+    parser.add_argument("-r", "--rclone", default="rclone", help="rclone executable file")
+    parser.add_argument("--rclone-config", help="rclone configuration file")
     parser.add_argument("-V", "--version", action="version", version=f"%(prog)s v{__version__}")
 
     args = parser.parse_args()
 
-    path_1, path_2 = resolve_paths(args.path_1, args.path_2)
+    rclone = args.rclone
+    rclone_config = args.rclone_config
+    check_rclone_config(rclone, rclone_config)
+
+    path_1, path_2 = resolve_paths(args.path_1,
+                                   args.path_2,
+                                   rclone_path=rclone,
+                                   rclone_config=rclone_config)
     if path_1 is None or path_2 is None:
         sys.exit(2)
 
