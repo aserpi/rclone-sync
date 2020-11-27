@@ -107,6 +107,13 @@ def list_files(path_1: PathLike,  # pylint: disable=too-many-arguments
                retries: int = 1,
                rclone_path: PathLike = "rclone",
                rclone_config: Optional[PathLike] = None) -> Dict[str, SyncFile]:  # yapf: disable
+    working_dir = working_dir.expanduser().resolve(strict=False)
+    try:
+        working_dir.mkdir(exist_ok=True, parents=True)
+    except OSError as e:
+        print(f"Cannot use the working directory: got {e.strerror} on {e.filename}")
+        sys.exit(5)
+
     raise NotImplementedError
 
 
