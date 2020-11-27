@@ -112,7 +112,7 @@ def list_files(path_1: PathLike,  # pylint: disable=too-many-arguments
         working_dir.mkdir(exist_ok=True, parents=True)
     except OSError as e:
         print(f"Cannot use the working directory: got {e.strerror} on {e.filename}")
-        sys.exit(5)
+        sys.exit(24)
 
     raise NotImplementedError
 
@@ -251,7 +251,7 @@ def main() -> None:
     except FileExistsError:
         print(f"rclone-sync is already synchronising the two paths.\n"
               f"If it is not the case, delete the file '{lock_file}'.")
-        sys.exit(4)
+        sys.exit(23)
     atexit.register(delete_lock_file, lock_file)
 
     if args.retries:
