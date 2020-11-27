@@ -10,14 +10,16 @@ import re
 import subprocess
 import sys
 import tempfile
-from typing import List, Optional, Set, Tuple, Union
+from typing import Any, Dict, List, Optional, Set, Tuple, Union  # TODO: PEP 585
 
 __version__ = "0.0.1"
 
 PathLike = Union[pathlib.Path, str]
 
 
-def check_rclone_config(rclone_path: PathLike, rclone_config: Optional[PathLike] = None) -> None:
+
+def check_rclone_config(rclone_path: PathLike = "rclone",
+                        rclone_config: Optional[PathLike] = None) -> None:
     """Checks for the existence of rclone's config file."""
     args = [rclone_path, "config", "file"]
     if rclone_config is not None:
@@ -167,15 +169,20 @@ def main() -> None:
     parser.add_argument("path_2", help="second path")
 
     # Optional arguments
-    parser.add_argument("-r", "--rclone", default="rclone", help="rclone executable file")
-    parser.add_argument("--rclone-config", help="rclone configuration file")
+    parser.add_argument("-r", "--rclone", help="rclone executable file", type=pathlib.Path)
+    parser.add_argument("--retries", help="number of retries", type=int)
+    parser.add_argument("--rclone-config", help="rclone configuration file", type=pathlib.Path)
     parser.add_argument("-V", "--version", action="version", version=f"%(prog)s v{__version__}")
+    parser.add_argument("-w", "--working-directory", help="directory in which store the db files")
 
     args = parser.parse_args()
 
-    rclone = args.rclone
-    rclone_config = args.rclone_config
-    check_rclone_config(rclone, rclone_config)
+    other_args: Dict[str, Any] = {}
+    if args.rclone:
+        other_args["rclone_path"] = args.rclone
+    if args.rclone_config:
+        other_args["rclone_config"] = args.rclone_config
+    check_rclone_config(**other_args)
 
     path_1, path_2 = resolve_paths(args.path_1,
                                    args.path_2,
@@ -203,6 +210,11 @@ def main() -> None:
               f"If it is not the case, delete the file '{lock_file}'.")
         sys.exit(1)
     atexit.register(delete_lock_file, lock_file)
+
+    if args.retries:
+        other_args["retries"] = args.retries
+    if args.working_directory:
+        other_args["working_dir"] = args.working_directory
 
     raise NotImplementedError
 
