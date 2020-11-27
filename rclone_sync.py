@@ -27,11 +27,11 @@ def check_rclone_config(rclone_path: PathLike, rclone_config: Optional[PathLike]
     try:
         config_file_response = subprocess.run(args, capture_output=True, check=False, text=True)
     except FileNotFoundError:
-        print(f"Can not find rclone executable file '{rclone_path}'")
+        print(f"Cannot find rclone executable file '{rclone_path}'")
         sys.exit(3)
 
     if config_file_response.returncode:
-        print("Can not find rclone configuration file")
+        print("Cannot find rclone configuration file")
         sys.exit(4)
 
     config_file = pathlib.Path(config_file_response.stdout.split("\n", 1)[1].strip())
@@ -40,7 +40,7 @@ def check_rclone_config(rclone_path: PathLike, rclone_config: Optional[PathLike]
             print(f"rclone configuration file '{config_file}' does not exist")
             sys.exit(4)
     except OSError as e:
-        print(f"Can not use rclone configuration file '{rclone_config}': "
+        print(f"Cannot use rclone configuration file '{rclone_config}': "
               f"got '{e.strerror}' on '{e.filename}'")
         sys.exit(4)
 
@@ -51,11 +51,11 @@ def delete_lock_file(lock_file: pathlib.Path) -> None:
 
 
 def get_paths_id(path_1: str, path_2: str) -> str:
-    """Returns a determininstic (nearly-)unique id for the paths.
+    """Returns a deterministic (nearly-)unique id for the paths.
 
     Directly concatenating the two paths produces a determininstic
     unique identifier but, since its size is not constrained a priori,
-    it can not be used as a file name.
+    it cannot be used as a file name.
 
     The hexadecimal SHA-256 hash digest of the concatenation of the two
     paths is guaranteed to be collision resistant, therefore it can
@@ -88,7 +88,7 @@ def resolve_path(path: PathLike,
     """Resolves the path.
 
     Returns:
-        None if the path can not be used by rclone.
+        None if the path cannot be used by rclone.
         A pathlib.Path object for an absolute path if the path is local.
         A str if the path is for a remote storage.
     """
@@ -122,7 +122,7 @@ def resolve_path(path: PathLike,
         try:
             path.mkdir(exist_ok=True, parents=True)
         except OSError as e:
-            print(f"Can not use path '{path}': "
+            print(f"Cannot use path '{path}': "
                   f"got '{e.strerror}' when creating directory '{e.filename}'")
             return None
         return path
@@ -199,8 +199,8 @@ def main() -> None:
     try:
         lock_file.touch(exist_ok=False)
     except FileExistsError:
-        print("rclone-sync is already synchronising the two paths.\n"
-              "If it is not the case, delete the file '%s'.", lock_file)  # yapf: disable
+        print(f"rclone-sync is already synchronising the two paths.\n"
+              f"If it is not the case, delete the file '{lock_file}'.")
         sys.exit(1)
     atexit.register(delete_lock_file, lock_file)
 
