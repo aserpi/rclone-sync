@@ -144,18 +144,17 @@ def resolve_paths(
         paths are identical.
     """
     remotes = list_remotes(rclone_path=rclone_path, rclone_config=rclone_config)
-    absolute_path_1 = resolve_path(path_1,
-                                   remotes,
-                                   rclone_path=rclone_path,
-                                   rclone_config=rclone_config)
-    absolute_path_2 = resolve_path(path_2,
-                                   remotes,
-                                   rclone_path=rclone_path,
-                                   rclone_config=rclone_config)
+    if not (absolute_path_1 := resolve_path(
+            path_1, remotes, rclone_path=rclone_path, rclone_config=rclone_config)):
+        sys.exit(1)
 
-    if absolute_path_1 is not None and absolute_path_1 == absolute_path_2:
+    if not (absolute_path_2 := resolve_path(
+            path_2, remotes, rclone_path=rclone_path, rclone_config=rclone_config)):
+        sys.exit(2)
+
+    if absolute_path_1 == absolute_path_2:
         print("The two paths are identical!")
-        return None, None
+        sys.exit(3)
 
     return absolute_path_1, absolute_path_2
 
@@ -184,18 +183,14 @@ def main() -> None:
         other_args["rclone_config"] = args.rclone_config
     check_rclone_config(**other_args)
 
-    path_1, path_2 = resolve_paths(args.path_1,
-                                   args.path_2,
-                                   rclone_path=rclone,
-                                   rclone_config=rclone_config)
-    if path_1 is None or path_2 is None:
-        sys.exit(2)
+    path_1, path_2 = resolve_paths(args.path_1, args.path_2, **other_args)
 
     # Since path order is important, using always the same (for
     # different runs) greatly simplifies application logic.
     path_1_str = str(path_1)
     path_2_str = str(path_2)
     if path_1_str > path_2_str:
+        path_1, path_2 = path_2, path_1
         path_1_str, path_2_str = path_2_str, path_1_str
     paths_id = get_paths_id(path_1_str, path_2_str)
 
