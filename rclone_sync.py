@@ -100,6 +100,16 @@ def get_paths_id(path_1: str, path_2: str) -> str:
     return paths_hash.hexdigest()
 
 
+def list_files(path_1: PathLike,  # pylint: disable=too-many-arguments
+               path_2: PathLike,
+               paths_id: str,
+               working_dir: pathlib.Path = pathlib.Path("~/.rclone-sync"),
+               retries: int = 1,
+               rclone_path: PathLike = "rclone",
+               rclone_config: Optional[PathLike] = None) -> Dict[str, SyncFile]:  # yapf: disable
+    raise NotImplementedError
+
+
 def list_remotes(rclone_path: PathLike = "rclone",
                  rclone_config: Optional[PathLike] = None) -> Set[str]:
     """Lists the remotes configured in rclone."""
@@ -241,6 +251,7 @@ def main() -> None:
         other_args["retries"] = args.retries
     if args.working_directory:
         other_args["working_dir"] = args.working_directory
+    files = list_files(path_1, path_2, paths_id, **other_args)
 
     raise NotImplementedError
 
