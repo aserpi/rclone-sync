@@ -100,11 +100,12 @@ def resolve_path(path: PathLike,
             return None
         path_split = path.split(":", 1)
         if len(path_split) == 1:
-            path = pathlib.Path(path)
+            path = pathlib.Path(path)  # local path, process in other isinstance branch
         else:
+            # If there is a slash in the first part, then the path is local
             # See https://rclone.org/docs/#copying-files-or-directories-with-in-the-names
             if "/" in path_split[0]:
-                path = pathlib.Path(path)
+                path = pathlib.Path(path)  # local path, process in other isinstance branch
             elif path_split[0] in remotes:  # remote path
                 args = [rclone_path, "mkdir", path]
                 if rclone_config:
