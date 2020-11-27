@@ -128,8 +128,26 @@ def list_files(path_1: PathLike,  # pylint: disable=too-many-arguments
     list_files_in_path(args, 2, files, retries)
     args.pop()
 
-    raise NotImplementedError
+    try:
+        with open(working_dir / f"{paths_id}_1", "r") as lsf_file_1:
+            parse_lsf(lsf_file_1.read(), "lsf_1", files)
+    except FileNotFoundError:
+        print("No previous-sync file for path_1: creating one.")
+        (working_dir / f"{paths_id}_1").touch()
+    except OSError as e:
+        print(f"Cannot read the previous-sync file for path_1: got {e.strerror} on {e.filename}")
+        sys.exit(21)
+    try:
+        with open(working_dir / f"{paths_id}_2", "r") as lsf_file_2:
+            parse_lsf(lsf_file_2.read(), "db_2", files)
+    except FileNotFoundError:
+        print("No previous-sync file for path_2: creating one.")
+        (working_dir / f"db_2").touch()
+    except OSError as e:
+        print(f"Cannot read the previous-sync file for path_2: got {e.strerror} on {e.filename}")
+        sys.exit(22)
 
+    return files
 
 
 def list_files_in_path(args: List[str],
