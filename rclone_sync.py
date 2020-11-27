@@ -30,21 +30,21 @@ def check_rclone_config(rclone_path: PathLike = "rclone",
         config_file_response = subprocess.run(args, capture_output=True, check=False, text=True)
     except FileNotFoundError:
         print(f"Cannot find rclone executable file '{rclone_path}'")
-        sys.exit(3)
+        sys.exit(10)
 
     if config_file_response.returncode:
         print("Cannot find rclone configuration file")
-        sys.exit(4)
+        sys.exit(11)
 
     config_file = pathlib.Path(config_file_response.stdout.split("\n", 1)[1].strip())
     try:
         if not config_file.is_file():
             print(f"rclone configuration file '{config_file}' does not exist")
-            sys.exit(4)
+            sys.exit(11)
     except OSError as e:
         print(f"Cannot use rclone configuration file '{rclone_config}': "
               f"got '{e.strerror}' on '{e.filename}'")
-        sys.exit(4)
+        sys.exit(11)
 
 
 def delete_lock_file(lock_file: pathlib.Path) -> None:
@@ -204,7 +204,7 @@ def main() -> None:
     except FileExistsError:
         print(f"rclone-sync is already synchronising the two paths.\n"
               f"If it is not the case, delete the file '{lock_file}'.")
-        sys.exit(1)
+        sys.exit(4)
     atexit.register(delete_lock_file, lock_file)
 
     if args.retries:
