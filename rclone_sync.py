@@ -4,6 +4,8 @@ For more info: https://github.com/aserpi/rclone-sync
 """
 import argparse
 import atexit
+import dataclasses
+import datetime
 import hashlib
 import pathlib
 import re
@@ -15,7 +17,35 @@ from typing import Any, Dict, List, Optional, Set, Tuple, Union  # TODO: PEP 585
 __version__ = "0.0.1"
 
 PathLike = Union[pathlib.Path, str]
+RCLONE_TIMESTAMP_FORMAT = "%Y-%m-%d %H:%M:%S"
 
+
+@dataclasses.dataclass
+class FileAttributes:
+    size: Optional[int] = None
+    timestamp = datetime.datetime.min
+
+
+class SyncFile:
+    _types = {"db_1", "db_2", "path_1", "path_2"}
+
+    def __init__(self, path):
+        self.path = path
+        self.db_1 = FileAttributes()
+        self.db_2 = FileAttributes()
+        self.path_1 = FileAttributes()
+        self.path_2 = FileAttributes()
+
+    def add_properties(self, type_: str, size: str, timestamp: str) -> None:
+        assert type_ in SyncFile._types
+        file_attrs = self.__getattribute__(type_)
+        file_attrs.size = int(size)
+        file_attrs.timestamp = datetime.datetime.strptime(timestamp, RCLONE_TIMESTAMP_FORMAT)
+
+    def stringify_properties(self, type_: str) -> str:
+        timestamp = self.__getattribute__(f"{type_}_timestamp")
+        size = self.__getattribute__(f"{type_}_size")
+        return f"{self.path};{timestamp};{size}"
 
 
 def check_rclone_config(rclone_path: PathLike = "rclone",
