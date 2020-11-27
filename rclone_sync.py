@@ -107,6 +107,7 @@ def list_files(path_1: PathLike,  # pylint: disable=too-many-arguments
                retries: int = 1,
                rclone_path: PathLike = "rclone",
                rclone_config: Optional[PathLike] = None) -> Dict[str, SyncFile]:  # yapf: disable
+    """TODO: documentation"""
     working_dir = working_dir.expanduser().resolve(strict=False)
     try:
         working_dir.mkdir(exist_ok=True, parents=True)
@@ -114,7 +115,44 @@ def list_files(path_1: PathLike,  # pylint: disable=too-many-arguments
         print(f"Cannot use the working directory: got {e.strerror} on {e.filename}")
         sys.exit(24)
 
+    files: Dict[str, SyncFile] = {}
+    args = [str(rclone_path), "lsf", "-R", "--files-only", "--format", "pts"]
+    if rclone_config:
+        args.append("--config")
+        args.append(str(rclone_config))
+    args.append(str(path_1))
+
+    list_files_in_path(args, 1, files, retries)
+    args.pop()
+    args.append(str(path_2))
+    list_files_in_path(args, 2, files, retries)
+    args.pop()
+
     raise NotImplementedError
+
+
+
+def list_files_in_path(args: List[str],
+                       path_number: int,
+                       files: Dict[str, SyncFile],
+                       retries: int = 1) -> bool:
+    """Retrieves file properties from a path.
+
+    Args:
+        args: command-line arguments
+        path_number: path number
+        files: dictionary in which insert the parsed files
+        retries: max number of retries
+    """
+    for i in range(retries):
+        ret = subprocess.run(args, capture_output=True, check=False, text=True)
+
+        if not ret.returncode:
+            parse_lsf(ret.stdout, f"path_{path_number}", files)
+            return True
+
+        print(f"Failed to list files in path_{path_number} ({i + 1}/{retries}): {ret.stderr}")
+    sys.exit(3 + path_number)
 
 
 def list_remotes(rclone_path: PathLike = "rclone",
@@ -128,6 +166,27 @@ def list_remotes(rclone_path: PathLike = "rclone",
     return set(
         re.findall(r"(\S+):",
                    subprocess.run(args, capture_output=True, check=False, text=True).stdout))
+
+
+def parse_lsf(lsf_output: str, type_: str, files: Dict[str, SyncFile]) -> None:
+    """Parses the output of `rclone lsf`.
+
+    Args:
+        lsf_output: the output of a `rclone lsf --files-only --format pts` run.
+        type_: the type of path ('path_1', 'path_2', 'lsf_1' or 'lsf_2').
+        files: dictionary in which insert the parsed files.
+    """
+    for f in lsf_output.rstrip().split("\n"):
+        f_split = f.rsplit(";", 2)  # Filename may contain semicolons
+
+        try:
+            f_obj = files[f_split[0]]  # File already encountered somewhere
+        except KeyError:  # First time we see the file
+            f_obj = SyncFile(f_split[0])
+            files[f_split[0]] = f_obj
+
+        f_obj.add_properties(type_, f_split[2], f_split[1])
+
 
 # TODO (aserpi): add Windows support
 def resolve_path(path: PathLike,
